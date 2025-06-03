@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suivi de Marche</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 10px;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.8rem;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 1rem;
+        }
+        
+        .controls {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .file-input-container {
+            position: relative;
+            margin-bottom: 15px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .file-label {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            border: none;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .file-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            color: white;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .map-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        #map {
+            height: 60vh;
+            min-height: 400px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .status {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            border-radius: 20px;
+            margin-top: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .status-item:last-child {
+            border-bottom: none;
+        }
+        
+        .status-label {
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .status-value {
+            color: #666;
+            font-family: monospace;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        
+        .alert-info {
+            background: rgba(33, 150, 243, 0.1);
+            color: #1976D2;
+            border: 1px solid rgba(33, 150, 243, 0.3);
+        }
+        
+        .alert-error {
+            background: rgba(244, 67, 54, 0.1);
+            color: #d32f2f;
+            border: 1px solid rgba(244, 67, 54, 0.3);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 5px;
+            }
+            
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .controls, .header, .map-container, .status {
+                padding: 15px;
+            }
+            
+            .buttons {
+                flex-direction: column;
+            }
+            
+            .btn {
+                min-width: auto;
+            }
+            
+            #map {
+                height: 50vh;
+                min-height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚶 Suivi de Marche</h1>
+            <p>Chargez votre fichier GPX et suivez votre progression en temps réel</p>
+        </div>
+        
+        <div class="controls">
+            <div class="file-input-container">
+                <input type="file" id="gpxFile" class="file-input" accept=".gpx" />
+                <label for="gpxFile" class="file-label">
+                    📁 Choisir le fichier GPX
+                </label>
+            </div>
+            
+            <div class="buttons">
+                <button id="startTracking" class="btn btn-primary" disabled>
+                    📍 Démarrer le suivi
+                </button>
+                <button id="centerMap" class="btn btn-secondary" disabled>
+                    🎯 Centrer sur ma position
+                </button>
+                <button id="stopTracking" class="btn btn-danger" disabled>
+                    ⏹️ Arrêter le suivi
+                </button>
+            </div>
+        </div>
+        
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+        
+        <div class="status">
+            <div class="status-item">
+                <span class="status-label">📊 Statut:</span>
+                <span class="status-value" id="trackingStatus">En attente du fichier GPX</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">📏 Distance totale:</span>
+                <span class="status-value" id="totalDistance">-</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">🏃 Distance parcourue:</span>
+                <span class="status-value" id="walkedDistance">-</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">📍 Précision GPS:</span>
+                <span class="status-value" id="gpsAccuracy">-</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+        let map;
+        let gpxTrack = [];
+        let userMarker;
+        let gpxPolyline;
+        let walkedPolyline;
+        let watchId;
+        let isTracking = false;
+        let walkedPoints = [];
+        let totalDistance = 0;
+        let walkedDistance = 0;
+
+        // Initialiser la carte
+        function initMap() {
+            map = L.map('map').setView([50.8503, 4.3517], 13); // Brussels par défaut
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+        }
+
+        // Calculer la distance entre deux points GPS
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000; // Rayon de la Terre en mètres
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        // Parser le fichier GPX
+        function parseGPX(gpxContent) {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(gpxContent, "text/xml");
+            const trackPoints = xmlDoc.getElementsByTagName("trkpt");
+            
+            const points = [];
+            let distance = 0;
+            
+            for (let i = 0; i < trackPoints.length; i++) {
+                const lat = parseFloat(trackPoints[i].getAttribute("lat"));
+                const lon = parseFloat(trackPoints[i].getAttribute("lon"));
+                points.push([lat, lon]);
+                
+                if (i > 0) {
+                    distance += calculateDistance(
+                        points[i-1][0], points[i-1][1],
+                        lat, lon
+                    );
+                }
+            }
+            
+            return { points, distance };
+        }
+
+        // Afficher le tracé GPX sur la carte
+        function displayGPXTrack(points) {
+            if (gpxPolyline) {
+                map.removeLayer(gpxPolyline);
+            }
+            
+            gpxPolyline = L.polyline(points, {
+                color: '#2196F3',
+                weight: 4,
+                opacity: 0.8
+            }).addTo(map);
+            
+            map.fitBounds(gpxPolyline.getBounds());
+        }
+
+        // Mettre à jour la position de l'utilisateur
+        function updateUserPosition(position) {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            const accuracy = position.coords.accuracy;
+            
+            // Mettre à jour ou créer le marqueur utilisateur
+            if (userMarker) {
+                userMarker.setLatLng([lat, lon]);
+            } else {
+                userMarker = L.marker([lat, lon], {
+                    icon: L.icon({
+                        iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4CAF50" width="24" height="24">
+                                <circle cx="12" cy="12" r="8" fill="#4CAF50"/>
+                                <circle cx="12" cy="12" r="4" fill="white"/>
+                            </svg>
+                        `),
+                        iconSize: [20, 20],
+                        iconAnchor: [10, 10]
+                    })
+                }).addTo(map);
+            }
+            
+            // Ajouter le point au tracé parcouru
+            walkedPoints.push([lat, lon]);
+            
+            // Calculer la distance parcourue
+            if (walkedPoints.length > 1) {
+                const lastPoint = walkedPoints[walkedPoints.length - 2];
+                walkedDistance += calculateDistance(
+                    lastPoint[0], lastPoint[1], lat, lon
+                );
+            }
+            
+            // Mettre à jour le tracé parcouru
+            if (walkedPolyline) {
+                map.removeLayer(walkedPolyline);
+            }
+            
+            if (walkedPoints.length > 1) {
+                walkedPolyline = L.polyline(walkedPoints, {
+                    color: '#4CAF50',
+                    weight: 6,
+                    opacity: 0.9
+                }).addTo(map);
+            }
+            
+            // Mettre à jour l'interface
+            updateStatus(accuracy);
+        }
+
+        // Mettre à jour le statut
+        function updateStatus(accuracy) {
+            document.getElementById('gpsAccuracy').textContent = 
+                accuracy ? `±${Math.round(accuracy)}m` : '-';
+            
+            document.getElementById('totalDistance').textContent = 
+                `${(totalDistance / 1000).toFixed(2)} km`;
+            
+            document.getElementById('walkedDistance').textContent = 
+                `${(walkedDistance / 1000).toFixed(2)} km`;
+            
+            // Mettre à jour la barre de progression
+            const progress = totalDistance > 0 ? (walkedDistance / totalDistance) * 100 : 0;
+            document.getElementById('progressFill').style.width = `${Math.min(progress, 100)}%`;
+        }
+
+        // Gestionnaires d'événements
+        document.getElementById('gpxFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const result = parseGPX(e.target.result);
+                        gpxTrack = result.points;
+                        totalDistance = result.distance;
+                        
+                        displayGPXTrack(gpxTrack);
+                        
+                        document.getElementById('startTracking').disabled = false;
+                        document.getElementById('trackingStatus').textContent = 'GPX chargé - Prêt à démarrer';
+                        
+                        updateStatus();
+                        
+                        // Afficher une alerte de succès
+                        const alert = document.createElement('div');
+                        alert.className = 'alert alert-info';
+                        alert.textContent = `Fichier GPX chargé avec succès! ${gpxTrack.length} points, ${(totalDistance/1000).toFixed(2)} km`;
+                        document.querySelector('.controls').insertBefore(alert, document.querySelector('.file-input-container'));
+                        
+                        setTimeout(() => alert.remove(), 5000);
+                        
+                    } catch (error) {
+                        const alert = document.createElement('div');
+                        alert.className = 'alert alert-error';
+                        alert.textContent = 'Erreur lors du chargement du fichier GPX';
+                        document.querySelector('.controls').insertBefore(alert, document.querySelector('.file-input-container'));
+                        
+                        setTimeout(() => alert.remove(), 5000);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        document.getElementById('startTracking').addEventListener('click', function() {
+            if (navigator.geolocation) {
+                isTracking = true;
+                walkedPoints = [];
+                walkedDistance = 0;
+                
+                watchId = navigator.geolocation.watchPosition(
+                    updateUserPosition,
+                    function(error) {
+                        console.error('Erreur GPS:', error);
+                        document.getElementById('trackingStatus').textContent = 'Erreur GPS';
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 1000
+                    }
+                );
+                
+                document.getElementById('startTracking').disabled = true;
+                document.getElementById('stopTracking').disabled = false;
+                document.getElementById('centerMap').disabled = false;
+                document.getElementById('trackingStatus').textContent = 'Suivi en cours...';
+            } else {
+                alert('La géolocalisation n\'est pas supportée par ce navigateur.');
+            }
+        });
+
+        document.getElementById('stopTracking').addEventListener('click', function() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                isTracking = false;
+                
+                document.getElementById('startTracking').disabled = false;
+                document.getElementById('stopTracking').disabled = true;
+                document.getElementById('centerMap').disabled = true;
+                document.getElementById('trackingStatus').textContent = 'Suivi arrêté';
+            }
+        });
+
+        document.getElementById('centerMap').addEventListener('click', function() {
+            if (userMarker) {
+                map.setView(userMarker.getLatLng(), 16);
+            }
+        });
+
+        // Initialiser l'application
+        initMap();
+    </script>
+</body>
+</html>
