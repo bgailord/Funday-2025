@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Funday 2025 Final - Parcours GPX</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-gpx@1.5.1/leaflet-gpx.js"></script>
+    <style>
+        /* ...styles inchangés... */
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏃‍♂️ Funday 2025 Final</h1>
+        <p>Parcours GPX - Cliquez sur "Me localiser" pour voir votre position sur le parcours</p>
+    </div>
+    <div class="controls">
+        <button class="btn" onclick="locateUser()">📍 Me localiser</button>
+        <button class="btn" onclick="centerOnTrack()">🎯 Centrer parcours</button>
+    </div>
+    <div id="map"></div>
+    <div class="info-panel" id="info-panel"></div>
+
+    <script>
+        let map = L.map('map').setView([50.4539, 3.9392], 15);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        let gpx = 'parcours.gpx'; // Nom du fichier GPX à mettre dans le même dossier
+        let gpxLayer;
+
+        new L.GPX(gpx, {
+            async: true,
+            marker_options: {
+                startIconUrl: 'https://unpkg.com/leaflet-gpx@1.5.1/pin-icon-start.png',
+                endIconUrl: 'https://unpkg.com/leaflet-gpx@1.5.1/pin-icon-end.png',
+                shadowUrl: 'https://unpkg.com/leaflet-gpx@1.5.1/pin-shadow.png'
+            }
+        }).on('loaded', function(e) {
+            map.fitBounds(e.target.getBounds());
+            gpxLayer = e.target;
+            document.getElementById('info-panel').innerHTML = `
+                <h3>📈 Informations du parcours</h3>
+                <div class="info-item"><span class="info-label">Distance:</span><span class="info-value">${(e.target.get_distance() / 1000).toFixed(2)} km</span></div>
+                <div class="info-item"><span class="info-label">Durée:</span><span class="info-value">${(e.target.get_duration() / 60).toFixed(1)} min</span></div>
+                <div class="info-item"><span class="info-label">Altitude min:</span><span class="info-value">${e.target.get_elevation_min().toFixed(1)} m</span></div>
+                <div class="info-item"><span class="info-label">Altitude max:</span><span class="info-value">${e.target.get_elevation_max().toFixed(1)} m</span></div>
+                <div class="info-item"><span class="info-label">Dénivelé +:</span><span class="info-value">${e.target.get_elevation_gain().toFixed(1)} m</span></div>`;
+        }).addTo(map);
+
+        function locateUser() {
+            map.locate({setView: true, maxZoom: 16});
+        }
+
+        map.on('locationfound', function(e) {
+            L.circleMarker(e.latlng, {
+                radius: 8,
+                fillColor: "#ff4757",
+                color: "#fff",
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.8
+            }).addTo(map);
+        });
+
+        function centerOnTrack() {
+            if (gpxLayer) map.fitBounds(gpxLayer.getBounds());
+        }
+    </script>
+</body>
+</html>
